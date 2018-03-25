@@ -1,0 +1,188 @@
+---
+title: "FinalProject_Exploratory_Analysis"
+author: "Manoj Krishna"
+date: "March 24, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Summary
+The objective of this report is to demonstrate the necessary data collection, exploratory data analysis on the key features of the Data Science Capstone Swiftkey training dataset such as word counts, line counts and word frequencies of different N-gram models as well as the plan for the final word prediction Shiny app.This is the milestone report for Coursera Datasciences Capstone. It deals with text analysis/mining with end goal of predicting the next word given a set of words in the final project.
+
+The corpus of words/training data set is to be created from a zipped file downloaded from the coursera site that has the following files:
+
+Twitter file (en_US.twitter.txt)
+Blog file (en_US.blog.txt)
+News file (en_US.news.txt)
+In this milestone report after week 2, a html file has been created/published on RPub, which details the exploratory analysis of the training data set, which are:
+
+Basic summaries of the three files
+Basic plots, such as histograms to illustrate features of the data
+
+#R Packages
+The following R Packages will be installed to support the execution of this project
+```{r}
+# Preload necessary R librabires
+library(dplyr)
+library(doParallel)
+library(stringi)
+library(tm)
+library(RWeka)
+library(ggplot2)
+library(wordcloud)
+library(SnowballC)
+
+```
+
+
+#Getting Data
+Data will be downaloaded from the URL provided. The basic file exist check will be done before downloading the data file.
+```{r}
+data_source_url <- "https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip"
+dest_file_fullpath <- "Coursera-SwiftKey.zip"
+
+if(!file.exists(dest_file_fullpath))
+{
+  download.file(data_source_url, dest_file_fullpath)
+  unzip(dest_file_fullpath)
+}
+```
+
+
+#Preparing the Data Set
+Loading and separating files for Tweets, News and Blogs. 
+
+```{r}
+tweetsCxn <- file("final/en_US/en_US.twitter.txt", "r")
+tweetsTxt <- readLines(tweetsCxn, -1, skipNul = TRUE)
+close(tweetsCxn)
+
+newsCxn <- file("final/en_US/en_US.news.txt", "r")
+newsTxt <- readLines(newsCxn, -1, skipNul = TRUE)
+close(newsCxn)
+
+blogsCxn <- file("final/en_US/en_US.blogs.txt", "r")
+blogsTxt <- readLines(blogsCxn, -1, skipNul = TRUE)
+close(blogsCxn)
+```
+
+
+#File Properties
+Calcualting lengths of the data set of Tweets, News and Blogs
+
+```{r}
+length(tweetsTxt)
+length(newsTxt)
+length(blogsTxt)
+```
+
+
+#Exploratory Data Analysis
+Prparing and Analysing the Tweets, News and Blogs Data
+
+##Analysis of Twitter Data
+```{r}
+tweetsSampleTxt <- sample(tweetsTxt, 0.05*length(tweetsTxt) )
+tweetsCorpus <- Corpus(VectorSource(tweetsSampleTxt))
+tweetsCorpus <- tm_map(tweetsCorpus, removeNumbers)
+tweetsCorpus <- tm_map(tweetsCorpus, stripWhitespace)
+tweetsCorpus <- tm_map(tweetsCorpus, removePunctuation)
+tweetsCorpus <- tm_map(tweetsCorpus, content_transformer(tolower))
+tweetsTermMatrix <- DocumentTermMatrix(tweetsCorpus)
+tweetsTermMatrixSparse <- removeSparseTerms(tweetsTermMatrix,0.999)
+tweetsWordFreq <- head(sort(colSums(as.matrix(tweetsTermMatrixSparse)),decreasing=TRUE),20)
+tweetsPlotFrame <- data.frame(word=names(tweetsWordFreq),freq=tweetsWordFreq)
+str(tweetsPlotFrame)
+```
+
+
+#Plotting Twitter Data
+Plotting Twitter data in Histogram and in coud 
+```{r}
+tweetsWordFreqBarplot <- ggplot(tweetsPlotFrame,aes(word,freq), order_by(freq),)
+tweetsWordFreqBarplot <- tweetsWordFreqBarplot + geom_bar(stat="identity") + labs(x = "Words") + labs(y = "frequency")+ 
+           geom_text(aes(label = freq, y = freq), size = 2)
+
+tweetsWordFreqBarplot
+wordcloud(names(tweetsWordFreq), tweetsWordFreq, min.freq=100, max.words=100, colors = brewer.pal(6, "Paired"))
+```
+
+## Analysing News Data
+
+
+```{r}
+newsSampleTxt <- sample(newsTxt, 0.05*length(newsTxt) )
+newsCorpus <- Corpus(VectorSource(newsSampleTxt))
+newsCorpus <- tm_map(newsCorpus, removeNumbers)
+newsCorpus <- tm_map(newsCorpus, stripWhitespace)
+newsCorpus <- tm_map(newsCorpus, removePunctuation)
+newsCorpus <- tm_map(newsCorpus, content_transformer(tolower))
+newsTermMatrix <- DocumentTermMatrix(newsCorpus)
+newsTermMatrixSparse <- removeSparseTerms(newsTermMatrix,0.999)
+newsWordFreq <- head(sort(colSums(as.matrix(newsTermMatrixSparse)),decreasing=TRUE),20)
+newsPlotFrame <- data.frame(word=names(newsWordFreq),freq=newsWordFreq)
+str(newsPlotFrame)
+```
+
+#Plotting News Data
+Plotting News data in Histogram and in coud 
+
+```{r}
+
+newsWordFreqBarplot <- ggplot(newsPlotFrame,aes(word,freq), order_by(freq))
+newsWordFreqBarplot <- newsWordFreqBarplot + geom_bar(stat="identity") + labs(x = "Words") + labs(y = "frequency")+ 
+           geom_text(aes(label = freq, y = freq), size = 2)
+
+newsWordFreqBarplot
+wordcloud(names(newsWordFreq), newsWordFreq, min.freq=100, max.words=50, colors = brewer.pal(6, "Paired"))
+```
+
+
+##Analysing Blogs Data
+```{r}
+blogsSampleTxt <- sample(blogsTxt, 0.05*length(blogsTxt) )
+blogsCorpus <- Corpus(VectorSource(blogsSampleTxt))
+blogsCorpus <- tm_map(blogsCorpus, removeNumbers)
+blogsCorpus <- tm_map(blogsCorpus, stripWhitespace)
+blogsCorpus <- tm_map(blogsCorpus, removePunctuation)
+blogsCorpus <- tm_map(blogsCorpus, content_transformer(tolower))
+blogsTermMatrix <- DocumentTermMatrix(blogsCorpus)
+blogsTermMatrixSparse <- removeSparseTerms(blogsTermMatrix,0.999)
+blogsWordFreq <- head(sort(colSums(as.matrix(blogsTermMatrixSparse)),decreasing=TRUE),20)
+blogsPlotFrame <- data.frame(word=names(blogsWordFreq),freq=blogsWordFreq)
+str(blogsPlotFrame)
+```
+
+##Plotting Blogs Data
+Plotting Blogs Data in Histogram and in Cloud
+```{r}
+
+blogsWordFreqBarplot <- ggplot(blogsPlotFrame,aes(word,freq), order_by(freq))
+blogsWordFreqBarplot <- blogsWordFreqBarplot + geom_bar(stat="identity") + labs(x = "Words") + labs(y = "frequency")+ 
+           geom_text(aes(label = freq, y = freq), size = 2)
+
+blogsWordFreqBarplot
+wordcloud(names(blogsWordFreq), blogsWordFreq, min.freq=100, max.words=50, colors = brewer.pal(6, "Paired"))
+```
+
+
+#Future Plan and Considerations
+The future plan and considerations for the final word prediction Shiny App and prediction algorithm are as below:
+
+1. To consider switching to use quanteda library instead of tm library for performance optimization
+2. To use larger sample size (40%-60%) as training dataset for prediction model
+3. To consider for Shiny App Free Plan limitation for Shiny App and the dataset size to be used by the app
+4. To consider how the Shiny App handle for scenario where it cannot predict the next word
+Create dataframes of 1-,2-,3-, and possibly 4-grams based on the larger training dataset including word-relation frequencies.
+5. Look into using the filehash package to load parts of the data at a time to get around my machine's RAM limitations.
+6.Create and test several prediction algorithms, with and without and tags and apply them to the development dataset to determine their efficacy and speed.
+7. Find a way to use either Katz backoff or Kneser-Ney smoothing to deal with unknown words.
+8. The final goal is to create a Shiny app, with a simple user interface that provides reactive predictions as quickly and accurately as possible.
+
+As expected words like "the", "and" are most commonly found. While there are techniques like removing stopwords in the "tm" packalge and natural language processing, I am not sure if these need to be removed if the goal is like swiftkey to predict the next word - including these commonly occuring words.
+
+These individual words will need to be preocessed as uni, bi and trigrams - groups of 1, 2 or 3 words together - as we have to predict when 1, 2 or 3 words are given. Will analyze their frequencies and also train a predictive statistical model with these n-grams. The output will be the most probably next word given a set of 1, 2 or 3 words. This will be built as a shiny app.
+
